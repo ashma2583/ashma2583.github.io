@@ -1,69 +1,105 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Portfolio
 
-## Getting Started
-
-First, run the development server:
+Personal site for Ashton Ma. Next.js 16 (App Router) + Tailwind v4, built as a
+static export and hosted on GitHub Pages.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev        # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`npm run build` writes the deployable site to `./out`. `npm start` does **not**
+work here: `output: "export"` produces static files, so there is no server to
+start. To preview a production build, serve the folder:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run build
+npx serve out
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Layout
 
-## Learn More
+| Route | File |
+| --- | --- |
+| `/` | [`app/page.tsx`](app/page.tsx) |
+| `/projects` | [`app/projects/page.tsx`](app/projects/page.tsx) |
+| `/projects/single-image-to-3d` | [`app/projects/single-image-to-3d/page.tsx`](app/projects/single-image-to-3d/page.tsx) |
+| `/projects/shazam-clone` | [`app/projects/shazam-clone/page.tsx`](app/projects/shazam-clone/page.tsx) |
+| everything else under `/projects/` | [`app/projects/[slug]/page.tsx`](app/projects/[slug]/page.tsx) |
 
-To learn more about Next.js, take a look at the following resources:
+The nav and footer are not in any page. They live in
+[`app/layout.tsx`](app/layout.tsx), which wraps every route.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The home page carries what used to be separate About and Contact pages: hero,
+bio, Currently, Toolbox, featured projects, and a contact section anchored at
+`/#contact`. Those routes no longer exist.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+> `components/Nav.tsx`, `Hero.tsx`, `Footer.tsx`, `Projectgrid.tsx`, and
+> `TechTag.tsx` are empty leftovers from scaffolding. Nothing imports them.
 
 ## Adding a project
 
-Projects are listed in [`data/projects.ts`](data/projects.ts). Two kinds of page exist:
+Every project is an entry in [`data/projects.ts`](data/projects.ts). The card
+shown in both grids reads exactly four fields — `slug`, `title`, `description`,
+`tech` — and both grids share [`components/ProjectCard.tsx`](components/ProjectCard.tsx).
+`featured: true` puts it on the home page.
 
-- **Default** — leave `customPage` off and set `github`. The route
-  `app/projects/[slug]/` renders the project header and fetches the repo's README
-  at build time.
-- **Hand-built** — create `app/projects/<slug>/page.tsx` and set `customPage: true`
-  on the entry. The static route wins over `[slug]`, and the flag keeps
-  `generateStaticParams` from emitting a duplicate of the same slug.
+There are two kinds of detail page:
 
-`components/paper.tsx` holds the layout used for hand-built pages: an
-academic-project-page structure (centered hero, pill link row, teaser figure,
-narrow justified prose with wide figures, results tables, BibTeX). See
-[`app/projects/single-image-to-3d/page.tsx`](app/projects/single-image-to-3d/page.tsx)
-for a worked example.
+**Generated.** Leave `customPage` off and set `github`. The `[slug]` route
+renders a header from `title`, `description`, `longDescription`, `tech`,
+`github`, and `demo`, then fetches and renders that repo's README at build time.
+Nothing else to write.
 
-Figures are pulled straight from the source repo over
-`raw.githubusercontent.com` rather than copied into `public/`, so the page
-tracks whatever the repo publishes. Every figure sits on a white card, since the
-assets are plots and renders authored against white.
+**Hand-built.** Create `app/projects/<slug>/page.tsx` and set `customPage: true`
+on the entry. Next gives the static route precedence over `[slug]`, and the flag
+keeps `generateStaticParams` from emitting the same path twice, which would break
+the export. On these pages `longDescription`, `github`, and `demo` are ignored;
+the title lives in **two** places (the data entry and the page itself), so
+renaming means editing both.
 
-## Deploying to GitHub Pages
+## Writing a hand-built page
 
-The site is a static export (`output: "export"` in
-[`next.config.ts`](next.config.ts)), published by
-[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) on every push to
-`main`/`master`.
+[`components/paper.tsx`](components/paper.tsx) is the toolkit — an academic
+project-page layout: centered hero, pill link row, narrow justified prose,
+wide figures.
+
+`PaperHero` · `PaperSection` · `Prose` · `Figure` · `FigureFrame` ·
+`FigureRow` · `FigCaption` · `Diagram` · `CodeBlock` · `ResultsTable` ·
+`Callout` · `Math` · `MathBlock` · `Bibtex`
+
+Both existing pages are worked examples.
+
+**Figures** come from the source repo over `raw.githubusercontent.com` rather
+than being copied into `public/`, so a page tracks whatever its repo publishes.
+`Figure` and `FigureRow` put images on a white card, since those assets are
+plots and renders authored against white. `FigureFrame` keeps the page
+background instead, for diagrams drawn inline — see
+[`app/projects/shazam-clone/figures.tsx`](app/projects/shazam-clone/figures.tsx),
+where the SVGs are theme-aware.
+
+**Math** is typeset with KaTeX. `renderToString` runs inside the server
+component, so the browser gets finished markup plus a stylesheet, and no math
+library ships. Write LaTeX with `String.raw` to avoid escaping every backslash:
+
+```tsx
+<MathBlock tag="1">{String.raw`\Delta T = \text{sourceT} - \text{sampleT}`}</MathBlock>
+```
+
+## Deploying
+
+Pushing to `main`/`master` triggers
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml), which builds and
+publishes to GitHub Pages.
 
 One-time setup:
 
-1. Push this directory to a GitHub repo.
-2. Repo **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+1. Create the repo and push.
+2. **Settings → Pages → Build and deployment → Source: GitHub Actions.** This is
+   not the default, and the workflow's deploy step fails without it.
 
-The workflow picks the base path automatically:
+The workflow derives the base path from the repo name, so nothing needs
+configuring by hand:
 
 | Repo name | URL | `NEXT_PUBLIC_BASE_PATH` |
 | --- | --- | --- |
@@ -73,21 +109,30 @@ The workflow picks the base path automatically:
 To reproduce a project-site build locally:
 
 ```bash
-NEXT_PUBLIC_BASE_PATH=/portfolio npm run build   # writes ./out
+NEXT_PUBLIC_BASE_PATH=/portfolio npm run build
 npx serve out
 ```
 
-Things to keep in mind, since there is no server at runtime:
+## Static-export constraints
 
-- Use `<Link>` (or `next/image`) rather than raw `<a href="/...">` for internal
-  links — only those get the base path prefixed.
-- Any data fetching in a page runs at **build** time. The workflow passes
-  `GITHUB_TOKEN` so the README fetches don't hit the anonymous rate limit.
-- `public/.nojekyll` must stay, or GitHub Pages strips the `_next` directory.
-- Routes come from `generateStaticParams`; `dynamicParams` is `false`.
+There is no server at runtime, which rules a few things out:
 
-## Deploy on Vercel
+- Use `<Link>` for internal links, never a raw `<a href="/...">`. Only `<Link>`
+  gets the base path prefixed, so plain anchors 404 on a project site.
+- Data fetching in a page runs at **build** time. The workflow passes
+  `GITHUB_TOKEN` so the README fetches avoid the anonymous rate limit.
+- Routes come only from `generateStaticParams`; `dynamicParams` is `false`.
+- `images.unoptimized` is on and pages use plain `<img>`, so anything added to
+  `public/` should already be cropped and sized.
+- `public/.nojekyll` must stay, or Pages strips the `_next` directory and the
+  site loads unstyled.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Known placeholders
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- The Resume nav link is commented out in `app/layout.tsx` and `public/resume.pdf`
+  no longer exists. Add the PDF back before uncommenting, or the link 404s.
+- `public/images/profile.jpg` is a 0-byte leftover. The photo actually used is
+  `public/images/pfp.jpg`.
+- The Recipe Finder entry in `data/projects.ts` is commented out.
+- `lint` reports a few unused-import warnings on the project pages, from link
+  rows that are commented out but may come back.
