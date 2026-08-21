@@ -24,8 +24,9 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "Ashton — Portfolio",
-  description: "Software engineer building [your thing]. Projects, writing, and contact.",
+  title: "Ashton Ma",
+  description:
+    "Data Science student at the University of Michigan interested in machine learning, generative AI, and software engineering.",
 };
 
 export default function RootLayout({

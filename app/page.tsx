@@ -151,7 +151,8 @@ export default function Home() {
                 <path d="M13 5l7 7-7 7" />
               </svg>
             </Link>
-            <a href="mailto:ashtonma@umich.edu" className="btn-ghost">
+            {/* Same-page anchor, so it needs no basePath prefix. */}
+            <a href="#contact" className="btn-ghost">
               Get in touch
             </a>
           </div>
