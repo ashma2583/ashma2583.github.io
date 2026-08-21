@@ -2,6 +2,11 @@ import Link from "next/link";
 import ProjectCard from "@/components/ProjectCard";
 import { projects } from "@/data/projects";
 
+// Next prefixes basePath onto <Link> and next/image, but not onto a plain
+// <img src="/...">. On a project site that resolves against the domain root and
+// 404s, so anything in public/ referenced by hand needs the prefix applied.
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
 // Mirrors the Technical Skills block on the resume verbatim — same three
 // groups, same order. Keep the two in sync when either changes.
 const skills = {
@@ -157,7 +162,7 @@ export default function Home() {
             order-first lifts it above the name once the grid collapses. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/images/pfp.jpg"
+          src={`${basePath}/images/pfp.jpg`}
           alt="Ashton Ma"
           width={1000}
           height={1250}
