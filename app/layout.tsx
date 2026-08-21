@@ -52,9 +52,14 @@ export default function RootLayout({
               <Link href="/projects" className="nav-link text-neutral-700 hover:text-[var(--accent)] dark:text-neutral-300">
                 Projects
               </Link>
+              {/* Contact is a section at the bottom of the home page — reachable
+                  from the footer links rather than the top bar. */}
+              {/* Hidden for now — the PDF is still at public/resume.pdf.
+                  Uncomment to bring the link back.
               <Link href="/resume.pdf" className="nav-link text-neutral-700 hover:text-[var(--accent)] dark:text-neutral-300">
                 Resume
               </Link>
+              */}
             </div>
           </nav>
         </header>
@@ -83,7 +88,7 @@ export default function RootLayout({
               >
                 LinkedIn
               </a>
-              <a href="mailto:you@example.com" className="nav-link hover:text-[var(--accent)]">
+              <a href="mailto:ashtonma@umich.edu" className="nav-link hover:text-[var(--accent)]">
                 Email
               </a>
             </div>

@@ -4,8 +4,12 @@ import Markdown from "@/components/Markdown";
 import { projects } from "@/data/projects";
 import { fetchReadme } from "@/lib/github";
 
+// Static export: only the slugs listed here exist, and projects with a
+// hand-built page under `app/projects/<slug>/` are served by that route.
+export const dynamicParams = false;
+
 export function generateStaticParams() {
-  return projects.map((p) => ({ slug: p.slug }));
+  return projects.filter((p) => !p.customPage).map((p) => ({ slug: p.slug }));
 }
 
 export default async function ProjectDetail({

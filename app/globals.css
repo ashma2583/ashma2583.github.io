@@ -187,3 +187,11 @@ a, button {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ---------- KaTeX ---------- */
+
+/* Display math is spaced by its wrapper in <MathBlock>, so drop KaTeX's own
+   block margins and let the flex row handle centering + the equation number. */
+.katex-display {
+  margin: 0;
+}
