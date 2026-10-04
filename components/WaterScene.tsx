@@ -295,34 +295,24 @@ export default function WaterScene() {
       if (!pointer.inside || moved > 2.5) still = Math.max(0, still - dt * 4);
       else still = Math.min(1, still + dt * 2.2);
 
-      const top = 72;
-      const margin = 24;
-      const spread = Math.min(1, Math.max(0.7, width / 1100));
-
       for (const fish of fishes) {
         const idle = idleTarget(fish, t, width, height);
-        const sway = t * 0.4 + fish.phase;
-        let fx = pointer.sx + fish.ox * spread + Math.sin(sway) * 6;
-        let fy = pointer.sy + fish.oy * spread + Math.cos(sway * 0.8) * 4;
-        fx = Math.min(width - margin, Math.max(margin, fx));
-        fy = Math.min(height - margin, Math.max(top, fy));
-        let tx = idle.x + (fx - idle.x) * interest;
-        let ty = idle.y + (fy - idle.y) * interest;
+        const aimX = pointer.x;
+        const aimY = pointer.y;
+        let tx = idle.x + (aimX - idle.x) * interest;
+        let ty = idle.y + (aimY - idle.y) * interest;
 
         if (still > 0.02 && interest > 0.35 && !surfacing && !laning && !poloing) {
           const orca = fish.kind === "orca";
-          const radius = (orca ? 176 : 78 + (fish.lane + 1) * 28) * spread;
-          const dist = Math.hypot(fish.x - pointer.sx, fish.y - pointer.sy);
-          const close = Math.min(1, Math.max(0, (radius + 56 - dist) / 90));
+          const radius = orca ? 150 : 64 + (fish.lane + 1) * 18;
+          const dist = Math.hypot(fish.x - aimX, fish.y - aimY);
+          const close = Math.min(1, Math.max(0, (radius + 36 - dist) / 70));
           const weight = still * close;
           if (weight > 0) {
-            const bearing = Math.atan2(fish.y - pointer.sy, fish.x - pointer.sx);
-            const lead = orca ? 0.4 : 0.72;
-            const dir = bearing + lead;
-            const cx = Math.min(width - margin, Math.max(margin, pointer.sx + Math.cos(dir) * radius));
-            const cy = Math.min(height - margin, Math.max(top, pointer.sy + Math.sin(dir) * radius));
-            tx += (cx - tx) * weight;
-            ty += (cy - ty) * weight;
+            const bearing = Math.atan2(fish.y - aimY, fish.x - aimX);
+            const dir = bearing + (orca ? 0.45 : 0.8);
+            tx += (aimX + Math.cos(dir) * radius - tx) * weight;
+            ty += (aimY + Math.sin(dir) * radius - ty) * weight;
           }
         }
 
@@ -404,33 +394,32 @@ export default function WaterScene() {
       raf = requestAnimationFrame(frame);
     };
 
-    const touchScreen = window.matchMedia("(hover: none), (pointer: coarse)").matches;
-    let holdTouch = touchScreen;
-    const placePointer = (event: PointerEvent) => {
-      if (event.pointerType === "touch") holdTouch = true;
-      pointer.x = event.clientX;
-      pointer.y = event.clientY;
+    const readPointer = (event: PointerEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = rect.width > 0 ? width / rect.width : 1;
+      const scaleY = rect.height > 0 ? height / rect.height : 1;
+      pointer.x = (event.clientX - rect.left) * scaleX;
+      pointer.y = (event.clientY - rect.top) * scaleY;
       pointer.inside = true;
     };
     const onMove = (event: PointerEvent) => {
-      placePointer(event);
+      readPointer(event);
     };
+    // A lifted finger is still the cursor. A mouse button is not.
     const onUp = (event: PointerEvent) => {
-      if (event.pointerType !== "touch" && !holdTouch) return;
-      placePointer(event);
+      if (event.pointerType !== "touch") return;
+      readPointer(event);
     };
     const onLeave = (event: PointerEvent) => {
-      if (holdTouch || event.pointerType === "touch") return;
+      if (event.pointerType === "touch") return;
       pointer.inside = false;
     };
     const onDown = (event: PointerEvent) => {
       if (reduced) return;
       const target = event.target as Element | null;
       if (target?.closest(".seal-hit") || target?.closest(".water-egg")) return;
-      pointer.x = event.clientX;
-      pointer.y = event.clientY;
-      pointer.inside = true;
-      ripples.push({ x: event.clientX, y: event.clientY, born: performance.now() / 1000, life: 1.05 });
+      readPointer(event);
+      ripples.push({ x: pointer.x, y: pointer.y, born: performance.now() / 1000, life: 1.05 });
       if (ripples.length > 4) ripples.shift();
     };
     const quietOthers = (keep: "surface" | "lane" | "polo") => {
