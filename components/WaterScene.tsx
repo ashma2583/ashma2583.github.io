@@ -404,12 +404,23 @@ export default function WaterScene() {
       raf = requestAnimationFrame(frame);
     };
 
-    const onMove = (event: PointerEvent) => {
+    const touchScreen = window.matchMedia("(hover: none), (pointer: coarse)").matches;
+    let holdTouch = touchScreen;
+    const placePointer = (event: PointerEvent) => {
+      if (event.pointerType === "touch") holdTouch = true;
       pointer.x = event.clientX;
       pointer.y = event.clientY;
       pointer.inside = true;
     };
-    const onLeave = () => {
+    const onMove = (event: PointerEvent) => {
+      placePointer(event);
+    };
+    const onUp = (event: PointerEvent) => {
+      if (event.pointerType !== "touch" && !holdTouch) return;
+      placePointer(event);
+    };
+    const onLeave = (event: PointerEvent) => {
+      if (holdTouch || event.pointerType === "touch") return;
       pointer.inside = false;
     };
     const onDown = (event: PointerEvent) => {
@@ -475,6 +486,8 @@ export default function WaterScene() {
 
     window.addEventListener("pointermove", onMove, { passive: true });
     window.addEventListener("pointerdown", onDown);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
     window.addEventListener("water-seal", onSeal);
     window.addEventListener("water-lane", onLane);
     window.addEventListener("water-polo", onPolo);
@@ -489,6 +502,8 @@ export default function WaterScene() {
       cancelAnimationFrame(raf);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
       window.removeEventListener("water-seal", onSeal);
       window.removeEventListener("water-lane", onLane);
       window.removeEventListener("water-polo", onPolo);
