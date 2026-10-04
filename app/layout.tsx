@@ -1,25 +1,30 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
+import { Cormorant_Garamond, Geist_Mono, Source_Serif_4 } from "next/font/google";
 import Link from "next/link";
+import SealNote from "@/components/SealNote";
+import WaterScene from "@/components/WaterScene";
+import WaveRule from "@/components/WaveRule";
 import "./globals.css";
 
-const geistSans = Geist({
+const sourceSerif = Source_Serif_4({
   subsets: ["latin"],
-  variable: "--font-geist-sans",
+  weight: ["400", "600"],
+  style: ["normal", "italic"],
+  variable: "--font-body",
+  display: "swap",
+});
+
+const cormorant = Cormorant_Garamond({
+  subsets: ["latin"],
+  weight: ["500", "600"],
+  style: ["normal", "italic"],
+  variable: "--font-display",
   display: "swap",
 });
 
 const geistMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-geist-mono",
-  display: "swap",
-});
-
-const instrumentSerif = Instrument_Serif({
-  subsets: ["latin"],
-  weight: "400",
-  style: ["normal", "italic"],
-  variable: "--font-instrument-serif",
   display: "swap",
 });
 
@@ -35,17 +40,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable}`}>
-      <body className="flex min-h-screen flex-col bg-[var(--background)] text-[var(--foreground)] antialiased">
-        <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[var(--background)]/75 backdrop-blur-md">
+    <html lang="en" data-scroll-behavior="smooth" className={`${sourceSerif.variable} ${cormorant.variable} ${geistMono.variable}`}>
+      <body className="flex min-h-screen flex-col bg-transparent text-[var(--foreground)] antialiased">
+        <div aria-hidden className="water-backdrop" />
+        <WaterScene />
+        <header className="sticky top-0 z-40 border-b border-[var(--border)]/80 bg-[var(--background)]/86 backdrop-blur-md">
           <nav className="mx-auto flex max-w-6xl items-center justify-between px-8 py-5">
-            <Link href="/" className="group flex items-center gap-2.5 text-base font-semibold tracking-tight">
-              <span className="relative inline-flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--accent)] opacity-50" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[var(--accent)] transition-transform group-hover:scale-125" />
-              </span>
-              Ashton Ma
-            </Link>
+            <div className="flex items-center gap-2.5">
+              <SealNote />
+              <Link href="/" className="text-base font-semibold tracking-tight">
+                Ashton Ma
+              </Link>
+            </div>
             <div className="flex items-center gap-8 text-sm font-medium">
               <Link href="/" className="nav-link text-neutral-700 hover:text-[var(--accent)] dark:text-neutral-300">
                 Home
@@ -65,11 +71,12 @@ export default function RootLayout({
           </nav>
         </header>
 
-        <main className="mx-auto w-full max-w-6xl flex-1 px-8 py-20">
+        <main className="water-sheet relative z-10 mx-auto w-full max-w-6xl flex-1 px-8 py-20">
           {children}
         </main>
 
-        <footer className="mt-20 border-t border-[var(--border)]">
+        <footer className="water-footer relative z-10 mt-20">
+          <WaveRule />
           <div className="mx-auto flex max-w-6xl flex-col gap-3 px-8 py-10 text-sm text-neutral-500 sm:flex-row sm:items-center sm:justify-between">
             <span>© {new Date().getFullYear()} Ashton Ma</span>
             <div className="flex gap-6">

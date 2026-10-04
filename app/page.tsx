@@ -1,4 +1,5 @@
 import Link from "next/link";
+import WaterEggs from "@/components/WaterEggs";
 import ProjectCard from "@/components/ProjectCard";
 import { projects } from "@/data/projects";
 
@@ -89,17 +90,7 @@ export default function Home() {
   const featured = projects.filter((p) => p.featured);
 
   return (
-    <div className="relative">
-      {/* Decorative blue blob in background */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-32 -right-20 -z-10 h-[480px] w-[480px] rounded-full bg-[var(--accent)]/10 blur-3xl animate-blob"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute top-40 -left-32 -z-10 h-[360px] w-[360px] rounded-full bg-[var(--accent)]/5 blur-3xl animate-blob delay-500"
-      />
-
+    <div>
       {/* ------------------------ Hero: text + photo ------------------------ */}
 
       <section className="mb-24 grid gap-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-16">
@@ -111,14 +102,11 @@ export default function Home() {
             <span className="relative inline-block">
               <span
                 className="relative z-10 italic font-normal text-[var(--accent)]"
-                style={{ fontFamily: "var(--font-instrument-serif)" }}
+                style={{ fontFamily: "var(--font-display)" }}
               >
                 Ashton Ma
               </span>
-              <span
-                aria-hidden
-                className="absolute bottom-2 left-0 z-0 h-3 w-full rounded-sm bg-[var(--accent)]/15"
-              />
+              <span aria-hidden className="brush-mark absolute bottom-1.5 left-0 z-0 h-3 w-full" />
             </span>
             .
           </h1>
@@ -131,7 +119,7 @@ export default function Home() {
           </p>
 
           <p className="mt-5 max-w-2xl animate-fade-in-up delay-300 text-lg leading-relaxed text-neutral-500 dark:text-neutral-400">
-            When I&apos;m not coding, I enjoy competitive swimming, playing water polo, or out trying new restaurants with friends.
+            <WaterEggs />
           </p>
 
           <div className="mt-9 flex flex-wrap items-center gap-3 animate-fade-in-up delay-300">
@@ -167,7 +155,7 @@ export default function Home() {
           alt="Ashton Ma"
           width={1000}
           height={1250}
-          className="order-first w-40 shrink-0 animate-fade-in-up rounded-2xl border border-[var(--border)] object-cover shadow-[0_20px_50px_-24px_rgba(0,0,0,0.35)] sm:w-48 lg:order-none lg:w-56"
+          className="order-first w-40 shrink-0 animate-fade-in-up rounded-2xl border border-[var(--border)] object-cover shadow-[0_22px_50px_-24px_rgba(28,23,18,0.4)] sm:w-48 lg:order-none lg:w-56"
         />
       </section>
 
@@ -177,8 +165,8 @@ export default function Home() {
         <section>
           <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-neutral-500">
             <span className="relative inline-flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--accent)] opacity-60" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--accent)]" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--cinnabar)] opacity-60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--cinnabar)]" />
             </span>
             Currently
           </h2>
@@ -241,7 +229,7 @@ export default function Home() {
           Contact{" "}
           <span
             className="italic font-normal text-[var(--accent)]"
-            style={{ fontFamily: "var(--font-instrument-serif)" }}
+            style={{ fontFamily: "var(--font-display)" }}
           >
             me
           </span>

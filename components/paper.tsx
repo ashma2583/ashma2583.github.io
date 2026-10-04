@@ -45,7 +45,7 @@ export function PaperHero({
       {subtitle && (
         <p
           className="mx-auto mt-5 max-w-3xl text-xl italic leading-snug text-neutral-600 sm:text-2xl dark:text-neutral-400"
-          style={{ fontFamily: "var(--font-instrument-serif)" }}
+          style={{ fontFamily: "var(--font-display)" }}
         >
           {subtitle}
         </p>

@@ -5,7 +5,7 @@ export default function ProjectCard({ project }: { project: Project }) {
   return (
     <Link
       href={`/projects/${project.slug}`}
-      className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--background)] p-6 transition-all duration-300 ease-out hover:-translate-y-1 hover:border-[var(--accent)]/40 hover:shadow-[0_20px_50px_-20px_rgba(37,99,235,0.4)]"
+      className="project-card group isolate relative flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--background)] p-6 transition-all duration-300 ease-out hover:-translate-y-1 hover:border-[var(--accent)]/40"
     >
       {/* Gradient sheen on hover */}
       <span

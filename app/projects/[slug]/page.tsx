@@ -37,7 +37,7 @@ export default async function ProjectDetail({
         {project.title}
         <span
           className="italic font-normal text-[var(--accent)]"
-          style={{ fontFamily: "var(--font-instrument-serif)" }}
+          style={{ fontFamily: "var(--font-display)" }}
         >
           .
         </span>
