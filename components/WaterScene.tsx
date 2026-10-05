@@ -3,11 +3,12 @@
 import { useEffect, useRef } from "react";
 import { drawFish, placeFish, type FishKind } from "@/components/fish";
 import { drawGarden, type Bloom, type Pad, type Reeds } from "@/components/garden";
+import { drawBubbles, drawFishShadow, drawRipple, drawWake, type Bubble, type Ripple, type WakePoint } from "@/components/water";
 
 /**
  * A school of small carp, and one orca that stays larger and deeper.
- * They bend through the body as they swim, and they keep off the cursor.
- * Pressing the seal calls them across the page for a moment.
+ * They bend through the body, leave small wakes, and circle a resting cursor.
+ * The seal, swimming, and water-polo easter eggs share the same simulation.
  */
 
 type Fish = {
@@ -20,6 +21,8 @@ type Fish = {
   bend: number;
   /** Tail phase. Advanced every frame so a speed change cannot snap it. */
   wag: number;
+  effort: number;
+  wake: WakePoint[];
   /** When this fish last struck the water polo ball. */
   lastHit: number;
   phase: number;
@@ -29,8 +32,6 @@ type Fish = {
   scale: number;
   lane: number;
 };
-
-type Ripple = { x: number; y: number; born: number; life: number };
 
 const SCHOOL: { kind: FishKind; phase: number; ox: number; oy: number; speed: number; lane: number }[] = [
   { kind: "red", phase: 0.2, ox: -70, oy: -28, speed: 168, lane: -1 },
@@ -70,6 +71,8 @@ export default function WaterScene() {
     let dpr = 1;
     let raf = 0;
     let last = performance.now();
+    let time = 0;
+    let lastSurfaceRipple = 0;
     let interest = 0;
     let still = 0;
     let surfaceStart = -20;
@@ -86,6 +89,7 @@ export default function WaterScene() {
 
     const pointer = { x: 0, y: 0, sx: 0, sy: 0, lx: 0, ly: 0, inside: false };
     const ripples: Ripple[] = [];
+    const bubbles: Bubble[] = [];
     let pads: Pad[] = [];
     let blooms: Bloom[] = [];
     let reeds: Reeds[] = [];
@@ -99,6 +103,8 @@ export default function WaterScene() {
       angle: 0.2,
       bend: 0,
       wag: item.phase,
+      effort: 0.4,
+      wake: [],
       lastHit: 0,
       phase: item.phase,
       ox: item.ox,
@@ -110,13 +116,18 @@ export default function WaterScene() {
 
     const resize = () => {
       dpr = Math.min(window.devicePixelRatio || 1, 3);
-      width = window.innerWidth;
-      height = window.innerHeight;
+      // The bitmap is in device pixels. The element must stay in CSS pixels,
+      // or every drawing lands dpr times away from the words on the page.
+      width = document.documentElement.clientWidth;
+      height = document.documentElement.clientHeight;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
       canvas.width = Math.floor(width * dpr);
       canvas.height = Math.floor(height * dpr);
-      const koi = Math.min(72, Math.max(46, width * 0.046));
+      const koi = Math.min(80, Math.max(54, width * 0.05));
       for (const fish of fishes) {
         fish.scale = fish.kind === "orca" ? koi * 2.35 : koi * (0.92 + (fish.phase % 1) * 0.16);
+        fish.wake.length = 0;
       }
 
       const narrow = width < 760;
@@ -138,38 +149,43 @@ export default function WaterScene() {
         const p = idleTarget(fish, t, width, height);
         fish.x = p.x;
         fish.y = p.y;
+        fish.angle = Math.atan2(-height * 0.0224 * Math.sin(t * 0.08 + fish.phase * 1.3), width * 0.038 * Math.cos(t * 0.1 + fish.phase));
       }
+    };
+
+    const rippleAt = (x: number, y: number, life = 1.05, strength = 1) => {
+      ripples.push({ x, y, born: time, life, strength });
+      if (ripples.length > 18) ripples.shift();
+    };
+
+    const splashAt = (x: number, y: number, count: number, strength = 1) => {
+      for (let i = 0; i < count; i++) {
+        const angle = (i / count) * Math.PI * 2 + time;
+        const speed = (18 + (i % 3) * 12) * strength;
+        bubbles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 12, r: 1.2 + (i % 4) * 0.55, born: time, life: 0.55 + (i % 3) * 0.18 });
+      }
+      if (bubbles.length > 48) bubbles.splice(0, bubbles.length - 48);
     };
 
     const steer = (fish: Fish, tx: number, ty: number, dt: number) => {
       const dx = tx - fish.x;
       const dy = ty - fish.y;
       const dist = Math.hypot(dx, dy) || 0.0001;
-      const speed = fish.maxSpeed * Math.min(1, dist / 140);
-      const ease = 1 - Math.exp(-2.4 * dt);
-      fish.vx += ((dx / dist) * speed - fish.vx) * ease;
-      fish.vy += ((dy / dist) * speed - fish.vy) * ease;
+      let delta = dist > 8 ? Math.atan2(dy, dx) - fish.angle : 0;
+      delta = Math.atan2(Math.sin(delta), Math.cos(delta));
+      const turnRate = fish.kind === "orca" ? 1.05 : 1.9;
+      const step = Math.max(-turnRate * dt, Math.min(turnRate * dt, delta * (1 - Math.exp(-3.2 * dt))));
+      fish.angle = Math.atan2(Math.sin(fish.angle + step), Math.cos(fish.angle + step));
+      const wanted = -step / Math.max(dt, 0.001) / turnRate * 0.38;
+      fish.bend += (wanted - fish.bend) * (1 - Math.exp(-4 * dt));
+
+      // Slow into a turn, then accelerate along the heading instead of sliding sideways.
+      const speed = fish.maxSpeed * Math.min(1, dist / 100) * (0.35 + 0.65 * Math.max(0, Math.cos(delta)));
+      const ease = 1 - Math.exp(-3.6 * dt);
+      fish.vx += (Math.cos(fish.angle) * speed - fish.vx) * ease;
+      fish.vy += (Math.sin(fish.angle) * speed - fish.vy) * ease;
       fish.x += fish.vx * dt;
       fish.y += fish.vy * dt;
-
-      const moving = Math.hypot(fish.vx, fish.vy);
-      if (moving > 8) {
-        const target = Math.atan2(fish.vy, fish.vx);
-        let delta = target - fish.angle;
-        while (delta > Math.PI) delta -= Math.PI * 2;
-        while (delta < -Math.PI) delta += Math.PI * 2;
-        const cap = (fish.kind === "orca" ? 1.1 : 1.6) * dt;
-        const step = Math.max(-cap, Math.min(cap, delta));
-        if (Math.abs(delta) > 0.18) {
-          fish.angle += step;
-          const wanted = Math.max(-0.45, Math.min(0.45, step / Math.max(dt, 0.001) / 8));
-          fish.bend += (wanted - fish.bend) * Math.min(1, dt * 1.5);
-        } else {
-          fish.bend += (0 - fish.bend) * Math.min(1, dt * 2);
-        }
-      } else {
-        fish.bend += (0 - fish.bend) * Math.min(1, dt * 2);
-      }
     };
 
     const paint = (t: number) => {
@@ -183,14 +199,10 @@ export default function WaterScene() {
           ripples.splice(i, 1);
           continue;
         }
-        const alpha = (1 - age) * 0.3;
-        ctx.beginPath();
-        ctx.arc(ripple.x, ripple.y, 6 + age * (ripple.life > 1 ? 120 : 72), 0, Math.PI * 2);
-        ctx.strokeStyle = dark ? `rgba(158, 195, 219, ${alpha})` : `rgba(27, 79, 114, ${alpha})`;
-        ctx.lineWidth = 1.15;
-        ctx.stroke();
+        drawRipple(ctx, ripple, t, dark);
       }
 
+      for (const fish of fishes) drawWake(ctx, fish.wake, t, dark, fish.kind === "orca");
       drawGarden(ctx, dark, pads, blooms, reeds);
 
       const laneAge = t - laneStart;
@@ -228,7 +240,11 @@ export default function WaterScene() {
         const radius = 17 * (0.55 + 0.45 * ballFade);
         ctx.save();
         ctx.globalAlpha = ballFade;
-        ctx.fillStyle = "#F5D000";
+        const ball = ctx.createRadialGradient(ballX - radius * 0.3, ballY - radius * 0.35, 1, ballX, ballY, radius);
+        ball.addColorStop(0, "#fff0a3");
+        ball.addColorStop(0.35, "#f5d544");
+        ball.addColorStop(1, "#c5951c");
+        ctx.fillStyle = ball;
         ctx.beginPath();
         ctx.arc(ballX, ballY, radius, 0, Math.PI * 2);
         ctx.fill();
@@ -246,17 +262,20 @@ export default function WaterScene() {
         ctx.restore();
       }
 
-      const ordered = [...fishes].sort((a, b) => a.y - b.y);
+      const ordered = [...fishes].sort((a, b) => Number(b.kind === "orca") - Number(a.kind === "orca") || a.y - b.y);
       for (const fish of ordered) {
-        const alpha = fish.kind === "orca" ? (dark ? 0.94 : 0.88) : 0.9;
+        const alpha = fish.kind === "orca" ? (dark ? 0.94 : 0.88) : 0.96;
         const rise = fish.kind === "orca" ? surfaceScale : 1;
+        drawFishShadow(ctx, fish.x, fish.y, fish.angle, fish.scale * rise, dark);
         ctx.save();
         ctx.globalAlpha = alpha;
         placeFish(ctx, fish.x, fish.y, fish.angle, fish.scale * rise, () => {
-          drawFish(ctx, fish.kind, fish.wag, fish.bend, dark);
+          const bend = fish.bend * (Math.cos(fish.angle) < 0 ? -1 : 1);
+          drawFish(ctx, fish.kind, fish.wag, bend, dark, fish.effort, fish.phase);
         });
         ctx.restore();
       }
+      drawBubbles(ctx, bubbles, t, dark);
     };
 
     resize();
@@ -267,7 +286,8 @@ export default function WaterScene() {
     const frame = (now: number) => {
       const dt = Math.min(0.034, (now - last) / 1000);
       last = now;
-      const t = now / 1000;
+      time += dt;
+      const t = time;
       const surfaceAge = t - surfaceStart;
       const surfacing = surfaceAge >= 0 && surfaceAge < 4.6;
       const surfaceU = surfacing ? surfaceAge / 4.6 : 0;
@@ -297,10 +317,26 @@ export default function WaterScene() {
 
       for (const fish of fishes) {
         const idle = idleTarget(fish, t, width, height);
-        const aimX = pointer.x;
-        const aimY = pointer.y;
-        let tx = idle.x + (aimX - idle.x) * interest;
-        let ty = idle.y + (aimY - idle.y) * interest;
+        const aimX = pointer.sx;
+        const aimY = pointer.sy;
+        let tx = idle.x + (aimX + fish.ox * 0.65 - idle.x) * interest;
+        let ty = idle.y + (aimY + fish.oy * 0.65 - idle.y) * interest;
+
+        // Give neighboring fish room to swim when the school gathers at the pointer.
+        if (!laning && !poloing) {
+          for (const other of fishes) {
+            if (other === fish) continue;
+            const dx = fish.x - other.x;
+            const dy = fish.y - other.y;
+            const dist = Math.hypot(dx, dy) || 1;
+            const room = (fish.scale + other.scale) * 0.38;
+            if (dist < room) {
+              const push = (1 - dist / room) * 72;
+              tx += dx / dist * push;
+              ty += dy / dist * push;
+            }
+          }
+        }
 
         if (still > 0.02 && interest > 0.35 && !surfacing && !laning && !poloing) {
           const orca = fish.kind === "orca";
@@ -317,13 +353,14 @@ export default function WaterScene() {
         }
 
         if (laning && fish.kind !== "orca") {
-          const delay = (fish.phase % 1) * 0.18;
+          const delay = fish.phase * 0.11;
           const u = Math.min(1, Math.max(0, (laneAge - delay) / 1.65));
           const along = u * u * (3 - 2 * u);
           fish.x = -30 + (width + 60) * along;
           fish.y = laneY + fish.lane * 14;
           fish.angle = 0;
-          fish.vx = width / 1.7;
+          fish.bend += (0 - fish.bend) * (1 - Math.exp(-5 * dt));
+          fish.vx = u > 0 && u < 1 ? (width + 60) * 6 * u * (1 - u) / 1.65 : 0;
           fish.vy = 0;
         } else if (poloing && fish.kind !== "orca" && ballFade > 0.2) {
           tx = ballX;
@@ -337,6 +374,8 @@ export default function WaterScene() {
             ballVx += Math.cos(fish.angle) * 340;
             ballVy += Math.sin(fish.angle) * 340;
             ballHits += 1;
+            rippleAt(ballX, ballY, 0.7, 0.65);
+            splashAt(ballX, ballY, 5, 0.65);
           }
         } else if (fish.kind === "orca" && surfacing) {
           const span = Math.max(120, width - 48);
@@ -344,8 +383,9 @@ export default function WaterScene() {
           fish.x = orcaX;
           fish.y = orcaY;
           fish.angle = Math.atan2(-Math.cos(surfaceU * Math.PI) * Math.PI * rise, span);
-          fish.vx = 0;
-          fish.vy = 0;
+          fish.vx = span / 4.6;
+          fish.vy = -Math.cos(surfaceU * Math.PI) * Math.PI * rise / 4.6;
+          fish.bend += (-Math.sin(surfaceU * Math.PI) * 0.16 - fish.bend) * (1 - Math.exp(-3 * dt));
         } else if (surfacing) {
           const awayX = fish.x - orcaX;
           const awayY = fish.y - orcaY;
@@ -359,8 +399,35 @@ export default function WaterScene() {
         }
 
         const moving = Math.hypot(fish.vx, fish.vy);
-        const sprint = (laning || poloing) && fish.kind !== "orca" ? 4.4 : 0;
-        fish.wag += dt * (3.6 + sprint + Math.min(moving, 140) / 80);
+        const sprint = (laning || poloing) && fish.kind !== "orca";
+        const effort = Math.min(1, moving / fish.maxSpeed + (sprint ? 0.25 : 0));
+        fish.effort += (effort - fish.effort) * (1 - Math.exp(-3 * dt));
+        fish.wag += dt * (fish.kind === "orca" ? 2.1 + fish.effort * 1.8 : 2.8 + fish.effort * 4.2);
+
+        const tail = { x: fish.x - Math.cos(fish.angle) * fish.scale * 0.55, y: fish.y - Math.sin(fish.angle) * fish.scale * 0.55 };
+        const previous = fish.wake[fish.wake.length - 1];
+        if (previous && Math.hypot(tail.x - previous.x, tail.y - previous.y) > fish.scale * 1.5) fish.wake.length = 0;
+        if (moving > 14 && (!previous || t - previous.born > 0.06)) {
+          fish.wake.push({ ...tail, angle: fish.angle, scale: fish.scale, born: t });
+        }
+        while (fish.wake.length && (t - fish.wake[0].born > 1.1 || fish.wake.length > 20)) fish.wake.shift();
+      }
+
+      if (surfacing && orcaY < height - 12 && t - lastSurfaceRipple > 0.28) {
+        lastSurfaceRipple = t;
+        rippleAt(orcaX, orcaY, 1.3, Math.sin(surfaceU * Math.PI) * 0.85);
+        splashAt(orcaX - 20, orcaY + 8, 3);
+      }
+      for (let i = bubbles.length - 1; i >= 0; i--) {
+        const bubble = bubbles[i];
+        if (t - bubble.born >= bubble.life) {
+          bubbles.splice(i, 1);
+          continue;
+        }
+        bubble.x += bubble.vx * dt;
+        bubble.y += bubble.vy * dt;
+        bubble.vx *= Math.exp(-2 * dt);
+        bubble.vy -= 9 * dt;
       }
 
       if (poloing) {
@@ -386,7 +453,15 @@ export default function WaterScene() {
           fish.vx = 0;
           fish.vy = 0;
           fish.bend = 0;
+          fish.effort = 0;
+          fish.wake.length = 0;
         }
+        ripples.length = 0;
+        bubbles.length = 0;
+        surfaceScale = 1;
+        surfaceStart = -20;
+        laneStart = -30;
+        poloStart = -30;
         paint(0);
         return;
       }
@@ -394,12 +469,19 @@ export default function WaterScene() {
       raf = requestAnimationFrame(frame);
     };
 
-    const readPointer = (event: PointerEvent) => {
+    const toCanvas = (clientX: number, clientY: number) => {
       const rect = canvas.getBoundingClientRect();
       const scaleX = rect.width > 0 ? width / rect.width : 1;
       const scaleY = rect.height > 0 ? height / rect.height : 1;
-      pointer.x = (event.clientX - rect.left) * scaleX;
-      pointer.y = (event.clientY - rect.top) * scaleY;
+      return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY,
+      };
+    };
+    const readPointer = (event: PointerEvent) => {
+      const point = toCanvas(event.clientX, event.clientY);
+      pointer.x = point.x;
+      pointer.y = point.y;
       pointer.inside = true;
     };
     const onMove = (event: PointerEvent) => {
@@ -419,8 +501,7 @@ export default function WaterScene() {
       const target = event.target as Element | null;
       if (target?.closest(".seal-hit") || target?.closest(".water-egg")) return;
       readPointer(event);
-      ripples.push({ x: pointer.x, y: pointer.y, born: performance.now() / 1000, life: 1.05 });
-      if (ripples.length > 4) ripples.shift();
+      rippleAt(pointer.x, pointer.y);
     };
     const quietOthers = (keep: "surface" | "lane" | "polo") => {
       if (keep !== "surface") surfaceStart = -20;
@@ -430,24 +511,28 @@ export default function WaterScene() {
     const onSeal = (event: Event) => {
       if (reduced) return;
       const detail = (event as CustomEvent<{ x: number; y: number }>).detail;
+      const point = toCanvas(detail.x, detail.y);
       quietOthers("surface");
-      surfaceStart = performance.now() / 1000;
-      ripples.push({ x: detail.x, y: detail.y, born: surfaceStart, life: 1.15 });
+      surfaceStart = time;
+      rippleAt(point.x, point.y, 1.15);
     };
     const onLane = (event: Event) => {
       if (reduced) return;
       const detail = (event as CustomEvent<{ x: number; y: number }>).detail;
+      const point = toCanvas(detail.x, detail.y);
       quietOthers("lane");
-      laneStart = performance.now() / 1000;
-      laneY = detail.y;
+      laneStart = time;
+      for (const fish of fishes) fish.wake.length = 0;
+      laneY = point.y;
     };
     const onPolo = (event: Event) => {
       if (reduced) return;
       const detail = (event as CustomEvent<{ x: number; y: number }>).detail;
+      const point = toCanvas(detail.x, detail.y);
       quietOthers("polo");
-      poloStart = performance.now() / 1000;
-      ballX = detail.x;
-      ballY = detail.y;
+      poloStart = time;
+      ballX = point.x;
+      ballY = point.y;
       ballVx = 0;
       ballVy = 0;
       ballHits = 0;
